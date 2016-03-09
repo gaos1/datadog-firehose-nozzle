@@ -108,7 +108,11 @@ func (c *Client) PostMetrics() error {
 	seriesBytes, metricsCount := c.formatMetrics()
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
-	resp, err := http.DefaultClient.Do(req)
+	timeout := time.Duration(30 * time.Second)
+	httpClient := http.Client{
+		Timeout: timeout,
+	}
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}
