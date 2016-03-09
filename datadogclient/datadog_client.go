@@ -9,6 +9,7 @@ import (
 
 	"errors"
 	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/sethgrid/pester"
 	"log"
 )
 
@@ -108,10 +109,12 @@ func (c *Client) PostMetrics() error {
 	seriesBytes, metricsCount := c.formatMetrics()
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
-	timeout := time.Duration(30 * time.Second)
-	httpClient := http.Client{
-		Timeout: timeout,
-	}
+	httpClient := pester.New()
+    httpClient.MaxRetries = 5
+    httpClient.Backoff = pester.ExponentialBackoff
+    httpClient.KeepLog = true
+    httpClient.Timeout = time.Duration(30 * time.Second)
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
