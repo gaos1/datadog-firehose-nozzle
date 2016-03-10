@@ -11,9 +11,12 @@ import (
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
+        "runtime"
 )
 
 func main() {
+        runtime.GOMAXPROCS(runtime.NumCPU())
+
 	configFilePath := flag.String("config", "config/datadog-firehose-nozzle.json", "Location of the nozzle config json file")
 	flag.Parse()
 
