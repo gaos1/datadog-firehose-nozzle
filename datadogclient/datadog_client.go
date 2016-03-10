@@ -99,14 +99,8 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 	c.metricPoints[key] = mVal
 }
 
-func (c *Client) PostMetrics() error {
+func (c *Client) SendMetricPostRequest(seriesBytes []byte) {
 	url := c.seriesURL()
-
-	c.populateInternalMetrics()
-	numMetrics := len(c.metricPoints)
-	log.Printf("Posting %d metrics", numMetrics)
-
-	seriesBytes, metricsCount := c.formatMetrics()
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
 	httpClient := pester.New()
@@ -117,16 +111,27 @@ func (c *Client) PostMetrics() error {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		log.Printf("datadog request returned HTTP response error: %s", err)
+		return
 	}
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		return fmt.Errorf("datadog request returned HTTP response: %s", resp.Status)
+		log.Printf("datadog request returned HTTP response: %s", resp.Status)
 	}
+}
+
+func (c *Client) PostMetrics() error {
+	c.populateInternalMetrics()
+	numMetrics := len(c.metricPoints)
+	log.Printf("Posting %d metrics", numMetrics)
+
+	seriesBytes, metricsCount := c.formatMetrics()
 
 	c.totalMetricsSent += metricsCount
 	c.metricPoints = make(map[metricKey]metricValue)
+
+	go c.SendMetricPostRequest(seriesBytes)
 
 	return nil
 }
