@@ -110,12 +110,13 @@ func (c *Client) SendMetricPostRequest(seriesBytes []byte) {
     httpClient.Timeout = time.Duration(30 * time.Second)
 
 	resp, err := httpClient.Do(req)
+	defer resp.Body.Close()
+
 	if err != nil {
 		log.Printf("datadog request returned HTTP response error: %s", err)
 		return
 	}
 
-	defer resp.Body.Close()
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 		log.Printf("datadog request returned HTTP response: %s", resp.Status)
 	}
