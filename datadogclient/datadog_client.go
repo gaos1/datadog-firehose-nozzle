@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"io/ioutil"
 
 	"errors"
 	"github.com/cloudfoundry/sonde-go/events"
@@ -110,19 +111,33 @@ func (c *Client) SendMetricPostRequest(seriesBytes []byte) {
     httpClient.Timeout = time.Duration(30 * time.Second)
 
 	resp, err := httpClient.Do(req)
-	defer resp.Body.Close()
+
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	if err != nil {
 		log.Printf("datadog request returned HTTP response error: %s", err)
 		return
 	}
 
+	
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 		log.Printf("datadog request returned HTTP response: %s", resp.Status)
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+	        log.Printf("Error while read datadog HTTP response: %s", err)
+	        return	
+	    }
+
+		var data map[string]interface{}
+	    json.Unmarshal(body, &data)
+		log.Printf("datadog response: %v", data)
 	}
 }
 
-func (c *Client) PostMetrics() error {
+func (c *Client) PrepareMetrics() []byte {
 	c.populateInternalMetrics()
 	numMetrics := len(c.metricPoints)
 	log.Printf("Posting %d metrics", numMetrics)
@@ -132,6 +147,12 @@ func (c *Client) PostMetrics() error {
 	c.totalMetricsSent += metricsCount
 	c.metricPoints = make(map[metricKey]metricValue)
 
+	return seriesBytes
+}
+
+
+func (c *Client) PostMetrics() error {
+	seriesBytes := c.PrepareMetrics()
 	go c.SendMetricPostRequest(seriesBytes)
 
 	return nil
