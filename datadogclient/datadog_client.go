@@ -25,6 +25,7 @@ type Client struct {
 	ip                    string
 	totalMessagesReceived uint64
 	totalMetricsSent      uint64
+	httpClient   		  *pester.Client
 }
 
 type metricKey struct {
@@ -59,6 +60,13 @@ type Point struct {
 }
 
 func New(apiURL string, apiKey string, prefix string, deployment string, ip string) *Client {
+	httpClient := pester.New()
+    httpClient.MaxRetries = 5
+    httpClient.Backoff = pester.ExponentialBackoff
+    httpClient.KeepLog = true
+    httpClient.Timeout = time.Duration(30 * time.Second)
+
+
 	return &Client{
 		apiURL:       apiURL,
 		apiKey:       apiKey,
@@ -66,6 +74,7 @@ func New(apiURL string, apiKey string, prefix string, deployment string, ip stri
 		prefix:       prefix,
 		deployment:   deployment,
 		ip:           ip,
+		httpClient:   httpClient,
 	}
 }
 
@@ -104,13 +113,17 @@ func (c *Client) SendMetricPostRequest(seriesBytes []byte) {
 	url := c.seriesURL()
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
-	httpClient := pester.New()
-    httpClient.MaxRetries = 5
-    httpClient.Backoff = pester.ExponentialBackoff
-    httpClient.KeepLog = true
-    httpClient.Timeout = time.Duration(30 * time.Second)
+	if req != nil {
+		defer req.Body.Close()
+	}
 
-	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("new datadog request returned error: %s", err)
+		return
+	}
+
+
+	resp, err := c.httpClient.Do(req)
 
 	if resp != nil {
 		defer resp.Body.Close()
