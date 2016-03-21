@@ -61,11 +61,10 @@ type Point struct {
 
 func New(apiURL string, apiKey string, prefix string, deployment string, ip string) *Client {
 	httpClient := pester.New()
-    httpClient.MaxRetries = 5
-    httpClient.Backoff = pester.ExponentialBackoff
-    httpClient.KeepLog = true
-    httpClient.Timeout = time.Duration(30 * time.Second)
-
+	httpClient.MaxRetries = 5
+	httpClient.Backoff = pester.ExponentialBackoff
+	httpClient.KeepLog = true
+	httpClient.Timeout = time.Duration(30 * time.Second)
 
 	return &Client{
 		apiURL:       apiURL,
@@ -122,7 +121,6 @@ func (c *Client) SendMetricPostRequest(seriesBytes []byte) {
 		return
 	}
 
-
 	resp, err := c.httpClient.Do(req)
 
 	if resp != nil {
@@ -134,18 +132,17 @@ func (c *Client) SendMetricPostRequest(seriesBytes []byte) {
 		return
 	}
 
-	
+	log.Printf("datadog request returned HTTP response: %s", resp.Status)
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Error while read datadog HTTP response: %s", err)
+		return	
+	}
+
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		log.Printf("datadog request returned HTTP response: %s", resp.Status)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-	        log.Printf("Error while read datadog HTTP response: %s", err)
-	        return	
-	    }
-
 		var data map[string]interface{}
-	    json.Unmarshal(body, &data)
+		json.Unmarshal(body, &data)
 		log.Printf("datadog response: %v", data)
 	}
 }
