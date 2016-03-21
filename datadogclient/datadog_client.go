@@ -10,7 +10,6 @@ import (
 
 	"errors"
 	"github.com/cloudfoundry/sonde-go/events"
-	"github.com/sethgrid/pester"
 	"log"
 )
 
@@ -25,7 +24,7 @@ type Client struct {
 	ip                    string
 	totalMessagesReceived uint64
 	totalMetricsSent      uint64
-	httpClient   		  *pester.Client
+	httpClient            http.Client
 }
 
 type metricKey struct {
@@ -60,11 +59,10 @@ type Point struct {
 }
 
 func New(apiURL string, apiKey string, prefix string, deployment string, ip string) *Client {
-	httpClient := pester.New()
-	httpClient.MaxRetries = 5
-	httpClient.Backoff = pester.ExponentialBackoff
-	httpClient.KeepLog = true
-	httpClient.Timeout = time.Duration(30 * time.Second)
+	timeout := time.Duration(30 * time.Second)
+	httpClient := http.Client{
+		Timeout: timeout,
+	}
 
 	return &Client{
 		apiURL:       apiURL,
